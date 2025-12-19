@@ -7,7 +7,7 @@
 #>
 
 # --- CONFIGURATION ---
-$SourceUrl = "https://raw.githubusercontent.com/FranceCyberDefense/BrowserHistory/refs/heads/main/browser-history-monitor.py"
+$SourceUrl = "https://raw.githubusercontent.com/France-CyberDefense/BrowserHistory/refs/heads/main/browser-history-monitor.py"
 $InstallDir = "C:\BrowserMonitor"
 $ScriptFileName = "browser-history-monitor.py"
 $TaskName = "BrowserHistoryMonitor"
@@ -144,5 +144,6 @@ Write-Host "[+] Shortcut created in All Users Startup folder." -ForegroundColor 
 
 # Cleanup old batch file if it exists from previous attempts
 if (Test-Path "$InstallDir\launcher.bat") { Remove-Item "$InstallDir\launcher.bat" -Force }
+
 
 Write-Host "`n[SUCCESS] Installation Complete." -ForegroundColor Green
