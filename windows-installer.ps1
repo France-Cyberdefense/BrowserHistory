@@ -1,86 +1,99 @@
 <#
 .SYNOPSIS
-  Deploy Browser History Monitor (Global install, user-scoped logs)
+    Deploy Browser History Monitor (global install)
+    Creates deployment trigger file browser_history.log
 #>
 
 # =========================
-# CONFIG
+# CONFIGURATION
 # =========================
 $SourceUrl   = "https://raw.githubusercontent.com/France-CyberDefense/BrowserHistory/refs/heads/main/browser-history-monitor.py"
 $InstallDir = "C:\BrowserMonitor"
 $ScriptName = "browser-history-monitor.py"
 $TaskName   = "BrowserHistoryMonitor"
 
-$DestPath = Join-Path $InstallDir $ScriptName
+$DestPath   = Join-Path $InstallDir $ScriptName
+$LogPath    = Join-Path $InstallDir "browser_history.log"
 
 # =========================
 # ADMIN CHECK
 # =========================
-$principal = New-Object Security.Principal.WindowsPrincipal([Security.Principal.WindowsIdentity]::GetCurrent())
+$principal = New-Object Security.Principal.WindowsPrincipal(
+    [Security.Principal.WindowsIdentity]::GetCurrent()
+)
+
 if (-not $principal.IsInRole([Security.Principal.WindowsBuiltInRole]::Administrator)) {
-    Write-Error "Run as Administrator"
+    Write-Error "This script must be run as Administrator"
     exit 1
 }
 
 # =========================
-# PYTHON CHECK
+# PYTHON CHECK (SYSTEM)
 # =========================
-$Python = "C:\Program Files\Python312\pythonw.exe"
-if (-not (Test-Path $Python)) {
-    Write-Error "System Python 3.12 not found"
+$PythonExe = "C:\Program Files\Python312\pythonw.exe"
+if (-not (Test-Path $PythonExe)) {
+    Write-Error "System-wide Python 3.12 not found ($PythonExe)"
     exit 1
 }
 
 # =========================
-# INSTALL DIR
+# INSTALL DIRECTORY
 # =========================
-New-Item -ItemType Directory -Force -Path $InstallDir | Out-Null
-
-# ACL: READ & EXECUTE ONLY
-$acl = New-Object System.Security.AccessControl.DirectorySecurity
-$acl.SetAccessRuleProtection($true, $false)
-
-$admins = New-Object System.Security.AccessControl.FileSystemAccessRule(
-    "BUILTIN\Administrators", "FullControl",
-    "ContainerInherit,ObjectInherit", "None", "Allow"
-)
-
-$users = New-Object System.Security.AccessControl.FileSystemAccessRule(
-    "BUILTIN\Users", "ReadAndExecute",
-    "ContainerInherit,ObjectInherit", "None", "Allow"
-)
-
-$acl.AddAccessRule($admins)
-$acl.AddAccessRule($users)
-Set-Acl $InstallDir $acl
+if (-not (Test-Path $InstallDir)) {
+    New-Item -ItemType Directory -Force -Path $InstallDir | Out-Null
+}
 
 # =========================
-# DOWNLOAD SCRIPT
+# DEPLOYMENT TRIGGER FILE
+# =========================
+# This file is used as a SOC-native deployment indicator
+if (-not (Test-Path $LogPath)) {
+    New-Item -ItemType File -Force -Path $LogPath | Out-Null
+}
+
+# =========================
+# DOWNLOAD PYTHON SCRIPT
 # =========================
 Invoke-WebRequest -Uri $SourceUrl -OutFile $DestPath -UseBasicParsing
 
 # =========================
-# SCHEDULED TASK
+# SCHEDULED TASK (USER CONTEXT)
 # =========================
-$action  = New-ScheduledTaskAction -Execute $Python -Argument "`"$DestPath`"" -WorkingDirectory $InstallDir
+$action = New-ScheduledTaskAction `
+    -Execute $PythonExe `
+    -Argument "`"$DestPath`"" `
+    -WorkingDirectory $InstallDir
+
 $trigger = New-ScheduledTaskTrigger -AtLogon
-$principal = New-ScheduledTaskPrincipal -GroupId "BUILTIN\Users" -RunLevel Limited
-$settings = New-ScheduledTaskSettingsSet -Hidden -ExecutionTimeLimit 0
+
+$taskPrincipal = New-ScheduledTaskPrincipal `
+    -GroupId "BUILTIN\Users" `
+    -RunLevel Limited
+
+$settings = New-ScheduledTaskSettingsSet `
+    -Hidden `
+    -ExecutionTimeLimit 0
 
 Unregister-ScheduledTask -TaskName $TaskName -Confirm:$false -ErrorAction SilentlyContinue
-Register-ScheduledTask -TaskName $TaskName -Action $action -Trigger $trigger -Principal $principal -Settings $settings
+
+Register-ScheduledTask `
+    -TaskName $TaskName `
+    -Action $action `
+    -Trigger $trigger `
+    -Principal $taskPrincipal `
+    -Settings $settings | Out-Null
 
 # =========================
 # STARTUP FAILSAFE
 # =========================
-$Startup = "$env:ProgramData\Microsoft\Windows\Start Menu\Programs\StartUp"
-$lnk = Join-Path $Startup "BrowserHistoryMonitor.lnk"
+$StartupDir = "$env:ProgramData\Microsoft\Windows\Start Menu\Programs\StartUp"
+$ShortcutPath = Join-Path $StartupDir "BrowserHistoryMonitor.lnk"
 
-$ws = New-Object -ComObject WScript.Shell
-$s = $ws.CreateShortcut($lnk)
-$s.TargetPath = $Python
-$s.Arguments  = "`"$DestPath`""
-$s.WorkingDirectory = $InstallDir
-$s.Save()
+$WshShell = New-Object -ComObject WScript.Shell
+$Shortcut = $WshShell.CreateShortcut($ShortcutPath)
+$Shortcut.TargetPath = $PythonExe
+$Shortcut.Arguments  = "`"$DestPath`""
+$Shortcut.WorkingDirectory = $InstallDir
+$Shortcut.Save()
 
-Write-Host "[OK] Deployment complete"
+Write-Host "[OK] Deployment complete – trigger file present at $LogPath"
