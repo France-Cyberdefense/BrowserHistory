@@ -29,38 +29,34 @@ class BrowserMonitor:
         self.setup_logging()
 
     def setup_logging(self):
-        # We still want the log in the shared folder C:\BrowserMonitor so the Wazuh Agent can find it easily
-        # The Installer grants "Modify" permissions to this folder, so User1 can write to it.
-        log_path = Path(LOG_FILE_PATH)
-        if not log_path.is_absolute():
-            # If relative, assumes C:\BrowserMonitor\ (script dir)
-            script_dir = Path(__file__).parent
-            log_path = script_dir / LOG_FILE_PATH
+        # AppData\Local\BrowserMonitor (user-scoped)
+        log_dir = self.user_home / "AppData" / "Local" / "BrowserMonitor"
+        log_path = log_dir / "browser_history.log"
 
         try:
-            if not log_path.parent.exists():
-                log_path.parent.mkdir(parents=True, exist_ok=True)
-            
+            log_dir.mkdir(parents=True, exist_ok=True)
+
             self.logger = logging.getLogger("BrowserMonitor")
             self.logger.setLevel(logging.INFO)
-            
-            # Syslog Format
+            self.logger.handlers.clear()
+            self.logger.propagate = False
+
             syslog_fmt = f'%(asctime)s {self.hostname} browser-monitor: %(message)s'
             date_fmt = '%b %d %H:%M:%S'
-            
             formatter = logging.Formatter(syslog_fmt, datefmt=date_fmt)
-            
-            fh = logging.FileHandler(str(log_path), encoding='utf-8')
+
+            fh = logging.FileHandler(log_path, encoding="utf-8")
             fh.setLevel(logging.INFO)
             fh.setFormatter(formatter)
             self.logger.addHandler(fh)
-            
+
+            # IMPORTANT : création déterministe du fichier
             self.logger.info(f"Starting Browser Monitor. Logging to: {log_path}")
 
-        except Exception as e:
-            # If we can't log to file, we are flying blind.
-            # But in background mode, print doesn't help much.
+        except Exception:
+        # Même comportement que le script natif
             pass
+
 
     def load_state(self):
         # FIX: Save state in the USER'S home directory, not the shared folder.
