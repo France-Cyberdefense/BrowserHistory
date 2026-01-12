@@ -96,4 +96,4 @@ $Shortcut.Arguments  = "`"$DestPath`""
 $Shortcut.WorkingDirectory = $InstallDir
 $Shortcut.Save()
 
-Write-Host "[OK] Deployment complete – trigger file present at $LogPath"
+
