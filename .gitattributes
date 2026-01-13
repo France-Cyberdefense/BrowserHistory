@@ -1,0 +1,9 @@
+# Bash / Linux scripts must always be LF
+*.sh   text eol=lf
+*.bash text eol=lf
+*.py   text eol=lf
+
+# Windows scripts
+*.ps1  text eol=crlf
+*.bat  text eol=crlf
+*.cmd  text eol=crlf
