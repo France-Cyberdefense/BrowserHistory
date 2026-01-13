@@ -187,4 +187,3 @@ else
     echo -e "${RED}[-] Unsupported Operating System for automatic persistence.${NC}"
     echo "    Script downloaded to $DEST_PATH. Please run manually."
 fi
-
